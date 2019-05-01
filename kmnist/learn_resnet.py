@@ -33,14 +33,21 @@ class CNN:
             
             self.w_conv3 = tf.Variable(tf.truncated_normal([k_h, k_w, self.ch_list[2], self.ch_list[3]], stddev=stddev))
             
-            self.w_conv3to5 = tf.Variable(tf.truncated_normal([1, 1, self.ch_list[2], self.ch_list[4]], stddev=stddev))
+            self.w_conv3to5 = tf.Variable(tf.truncated_normal([1, 1, self.ch_list[3], self.ch_list[5]], stddev=stddev))
 
             self.w_conv4 = tf.Variable(tf.truncated_normal([k_h, k_w, self.ch_list[3], self.ch_list[4]], stddev=stddev))
 
             self.w_conv5 = tf.Variable(tf.truncated_normal([k_h, k_w, self.ch_list[4], self.ch_list[5]], stddev=stddev))
-            
-            self.w_fc1 = tf.Variable(tf.truncated_normal([7 * 7 * self.ch_list[5], 10], stddev=stddev))
+           
+            self.w_conv5to7 = tf.Variable(tf.truncated_normal([1, 1, self.ch_list[5], self.ch_list[7]], stddev=stddev))
+
+            self.w_conv6 = tf.Variable(tf.truncated_normal([k_h, k_w, self.ch_list[5], self.ch_list[6]], stddev=stddev))
+
+            self.w_conv7 = tf.Variable(tf.truncated_normal([k_h, k_w, self.ch_list[6], self.ch_list[7]], stddev=stddev))
+
+            self.w_fc1 = tf.Variable(tf.truncated_normal([7 * 7 * self.ch_list[7], 10], stddev=stddev))
             self.b_fc1 = tf.Variable(tf.zeros([10]))
+            
             """
             #deconv
             self.w_fc2 = tf.Variable(tf.truncated_normal([5, 128]))
@@ -84,15 +91,29 @@ class CNN:
         h_conv5 = conv2d(h_conv4, self.w_conv5, train=train)
         h_conv5 = batch_norm_wrapper(h_conv5, phase_train=phase_train)
         h_conv5 += conv2d(h_conv3, self.w_conv3to5, train=train)
+        #h_conv5 += h_conv3
         h_conv5 = tf.nn.relu(h_conv5)
+
+
+        #Conv6(14*14*32)
+        h_conv6 = conv2d(h_conv5, self.w_conv6, train=train)
+        h_conv6 = batch_norm_wrapper(h_conv6, phase_train=phase_train)
+        h_conv6= tf.nn.relu(h_conv6)
+        
+        #Conv7(14*14*32)
+        #h_conv7 = conv2d(h_conv6, self.w_conv7, train=train) + conv2d(h_conv5, self.w_conv5to7, train=train)
+        h_conv7 = conv2d(h_conv6, self.w_conv7, train=train)
+        h_conv7 = batch_norm_wrapper(h_conv7, phase_train=phase_train)
+        h_conv7 += conv2d(h_conv5, self.w_conv5to7, train=train)
+        h_conv7 = tf.nn.relu(h_conv7)
 
         # max pooling(7*7*32)
         #h_pool5 = max_pool_2x2(h_conv5)
         # global average pooling(7*7*32)
-        h_pool5 = tf.nn.avg_pool(h_conv5, ksize=[1,2,2,1], strides=[1,2,2,1],padding="VALID") 
+        h_pool5 = tf.nn.avg_pool(h_conv7, ksize=[1,2,2,1], strides=[1,2,2,1],padding="VALID") 
 
         #Full connection1(10)
-        h_pool5 = tf.reshape(h_pool5, [-1, 7 * 7 * self.ch_list[5]])
+        h_pool5 = tf.reshape(h_pool5, [-1, 7 * 7 * self.ch_list[7]])
         h_fc1 = tf.matmul(h_pool5, self.w_fc1) + self.b_fc1
         h_drop = tf.nn.dropout(h_fc1, keep_prob)
         #h_fc1 = tf.nn.tanh(h_fc1)
@@ -188,8 +209,8 @@ if __name__ == "__main__":
    phase_train_ph = tf.placeholder(tf.bool)
    
    #channel_list = [1, 2, 3, 3, 3, 3]
-   #channel_list = [1, 8, 16, 16, 32, 32]
-   channel_list = [1, 8, 16, 16, 16, 16]
+   #channel_list = [1, 8, 16, 16, 16, 16]
+   channel_list = [1, 16, 32, 32, 64, 64, 128, 128]
    model = CNN(3, 3, ch_list=channel_list)
    
    output = model(in_ph, keep_prob_ph, phase_train=phase_train_ph)
@@ -203,7 +224,7 @@ if __name__ == "__main__":
    
    saver = tf.train.Saver(tf.global_variables())
    
-   total_batch = int(0.8 * len(imgs) / args.batch_size)
+   total_batch = int(len(imgs) * (1. - 1. / args.cv) / args.batch_size)
 
    datagen = ImageDataGenerator(rotation_range=5,
                                 width_shift_range=2,
@@ -218,15 +239,17 @@ if __name__ == "__main__":
       sess = tf.InteractiveSession()
       sess.run(tf.global_variables_initializer())
 
+      start_time = time.time()
+      
       #feed_dict = {in_ph: train_data,
       #             target_ph: train_label}
       for epc in range(1, args.epoch + 1):
-         for d in datagen.flow(imgs, shuffle=False, batch_size=len(imgs)):
-            imgs_gen = d
-            break
+         #for d in datagen.flow(imgs, shuffle=False, batch_size=len(imgs)):
+         #   imgs_gen = d
+         #   break
          random.shuffle(train)
          for i in range(total_batch):
-            mini_batch = imgs_gen[train[i*args.batch_size:(i+1)*args.batch_size]]
+            mini_batch = imgs[train[i*args.batch_size:(i+1)*args.batch_size]]
             #mini_batch = train_data[:100]
 
             mini_batch_y = labels_onehot[train[i*args.batch_size:(i+1)*args.batch_size]]
@@ -247,7 +270,7 @@ if __name__ == "__main__":
          pred_label = [np.argmax(valid_res[i]) for i in range(len(valid_res))]
          accuracy_valid = sum(pred_label == labels[test]) / len(labels[test])
          #print("epoch: {}, loss: {}, accuracy_train: {}, accuracy_valid: {}".format(epc, result[0], accuracy_train, accuracy_valid))
-         print("epoch: {}, loss: {}, accuracy_valid: {}".format(epc, result[0], accuracy_valid))
+         print("epoch: {}, time: {}, loss: {:6f}, accuracy_valid: {:6f}".format(epc, time.time() - start_time, result[0], accuracy_valid))
          
       
          saver.save(sess, "./result/cv{}/model".format(cv), global_step=args.epoch)
