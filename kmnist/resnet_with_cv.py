@@ -6,6 +6,7 @@ import random
 import copy
 import argparse
 import gc
+from keras.preprocessing.image import ImageDataGenerator
 from sklearn.model_selection import StratifiedKFold
 from IPython import embed
 
@@ -51,9 +52,10 @@ class CNN:
             self.w_deconv3 = tf.Variable(tf.truncated_normal([k_h, k_w,self.ch_list[0], self.ch_list[1]], stddev=stddev))
             """
             
-   def __call__(self, x, keep_prob, train=True):
+   def __call__(self, x, keep_prob, phase_train=None, train=True):
         #Conv1(28*28*8)
         h_conv1 = conv2d(x, self.w_conv1, train=train)
+        h_conv1 = batch_norm_wrapper(h_conv1, phase_train=phase_train)
         h_conv1 = tf.nn.relu(h_conv1)
         
         # max pooling(14*14*8)
@@ -61,22 +63,28 @@ class CNN:
         
         #Conv2(14*14*16)
         h_conv2 = conv2d(h_pool1, self.w_conv2, train=train)
+        h_conv2 = batch_norm_wrapper(h_conv2, phase_train=phase_train)
         h_conv2 = tf.nn.relu(h_conv2)
         
         #Conv3(14*14*16)
         h_conv3 = conv2d(h_conv2, self.w_conv3, train=train) + conv2d(h_pool1, self.w_conv1to3, train=train)
+        h_conv3 = batch_norm_wrapper(h_conv3, phase_train=phase_train)
         h_conv3 = tf.nn.relu(h_conv3)
 
-        #Conv4(14*14*16)
+        #Conv4(14*14*32)
         h_conv4 = conv2d(h_conv3, self.w_conv4, train=train)
+        h_conv4 = batch_norm_wrapper(h_conv4, phase_train=phase_train)
         h_conv4= tf.nn.relu(h_conv4)
         
-        #Conv5(14*14*16)
+        #Conv5(14*14*32)
         h_conv5 = conv2d(h_conv4, self.w_conv5, train=train) + conv2d(h_conv3, self.w_conv3to5, train=train)
+        h_conv5 = batch_norm_wrapper(h_conv5, phase_train=phase_train)
         h_conv5 = tf.nn.relu(h_conv5)
 
-        # max pooling(7*7*16)
-        h_pool5 = max_pool_2x2(h_conv5) 
+        # max pooling(7*7*32)
+        #h_pool5 = max_pool_2x2(h_conv5)
+        # global average pooling(7*7*32)
+        h_pool5 = tf.nn.avg_pool(h_conv5, ksize=[1,2,2,1], strides=[1,2,2,1],padding="VALID") 
 
         #Full connection1(10)
         h_pool5 = tf.reshape(h_pool5, [-1, 7 * 7 * self.ch_list[5]])
@@ -120,6 +128,35 @@ def deconv2d(x, weight, output_shape, batch_norm=None, train=True, activation=tf
         h_deconv = batch_norm(h_deconv, train=train)
     h_deconv = activation(h_deconv)
     return h_deconv
+
+def batch_norm_wrapper(inputs, phase_train=None, decay=0.99):
+   epsilon = 1e-5
+   out_dim = inputs.get_shape()[-1]
+   scale = tf.Variable(tf.ones([out_dim]))
+   beta = tf.Variable(tf.zeros([out_dim]))
+   pop_mean = tf.Variable(tf.zeros([out_dim]), trainable=False)
+   pop_var = tf.Variable(tf.ones([out_dim]), trainable=False)
+   
+   if phase_train == None:
+      return tf.nn.batch_normalization(inputs, pop_mean, pop_var, beta, scale, epsilon)
+
+   rank = len(inputs.get_shape())
+   axes = range(rank - 1)  # nn:[0], conv:[0,1,2]
+   batch_mean, batch_var = tf.nn.moments(inputs, list(axes))
+   
+   ema = tf.train.ExponentialMovingAverage(decay=decay)
+
+   def update():  # Update ema.
+      ema_apply_op = ema.apply([batch_mean, batch_var])
+      with tf.control_dependencies([ema_apply_op]):
+         return tf.nn.batch_normalization(inputs, tf.identity(batch_mean), tf.identity(batch_var), beta, scale, epsilon)
+   def average():  # Use avarage of ema.
+      train_mean = pop_mean.assign(ema.average(batch_mean))
+      train_var = pop_var.assign(ema.average(batch_var))
+      with tf.control_dependencies([train_mean, train_var]):
+         return tf.nn.batch_normalization(inputs, train_mean, train_var, beta, scale, epsilon)
+      
+   return tf.cond(phase_train, update, average)
         
 
 
@@ -143,13 +180,14 @@ if __name__ == "__main__":
    in_ph = tf.placeholder(tf.float32, shape=[None, 28, 28, 1])
    target_ph = tf.placeholder(tf.float32, shape=[None, 10])
    keep_prob_ph = tf.placeholder(tf.float32)
+   phase_train_ph = tf.placeholder(tf.bool)
    
    #channel_list = [1, 2, 2, 2, 2, 2]
-   channel_list = [1, 8, 16, 16, 32, 32]
-   #channel_list = [1, 8, 16, 16]
+   #channel_list = [1, 8, 16, 16, 32, 32]
+   channel_list = [1, 8, 16, 16, 16, 16]
    model = CNN(3, 3, ch_list=channel_list)
    
-   output = model(in_ph, keep_prob_ph)
+   output = model(in_ph, keep_prob_ph, phase_train=phase_train_ph)
 
    l1_regularizer = tf.contrib.layers.l1_regularizer(0.001)
    reg_penalty = tf.contrib.layers.apply_regularization(l1_regularizer, tf.global_variables())
@@ -162,6 +200,10 @@ if __name__ == "__main__":
    
    total_batch = int(0.8 * len(imgs) / args.batch_size)
 
+   datagen = ImageDataGenerator(rotation_range=10,
+                                width_shift_range=3,
+                                height_shift_range=3,
+                                )
    cv = 0
    for train, test in kfold.split(imgs, labels):
 
@@ -174,24 +216,20 @@ if __name__ == "__main__":
       #feed_dict = {in_ph: train_data,
       #             target_ph: train_label}
       for epc in range(1, args.epoch + 1):
+         #for d in datagen.flow(imgs, shuffle=False, batch_size=len(imgs)):
+         #   imgs_gen = d
+         #   break
+         random.shuffle(train)
          for i in range(total_batch):
             mini_batch = imgs[train[i*args.batch_size:(i+1)*args.batch_size]]
             #mini_batch = train_data[:100]
-            """
-            for j in range(args.batch_size):
-               rand = np.random.random()
-               if rand < 0.25:
-                  mini_batch[j] = mini_batch[j].transpose(1,0,2)[:,::-1]
-               elif rand < 0.5:
-                  mini_batch[j] = mini_batch[j].transpose(1,0,2)[::-1]
-               elif rand < 0.75:
-                  mini_batch[j] = mini_batch[j][::-1,::-1]
-            """
+
             mini_batch_y = labels_onehot[train[i*args.batch_size:(i+1)*args.batch_size]]
             #mini_batch_y = train_label[:100]
             feed_dict = {in_ph: mini_batch,
                          target_ph: mini_batch_y,
-                         keep_prob_ph: 0.7}
+                         keep_prob_ph: 0.7,
+                         phase_train_ph: True}
          
             result = sess.run([loss, train_op], feed_dict=feed_dict)
 
@@ -200,15 +238,13 @@ if __name__ == "__main__":
 
          #accuracy_train = sum(pred_label == labels[:100]) / len(train_res)
          
-         valid_res = sess.run(output, feed_dict={in_ph: imgs[test], keep_prob_ph: 1.0})
+         valid_res = sess.run(output, feed_dict={in_ph: imgs[test], keep_prob_ph: 1.0, phase_train_ph: False})
          pred_label = [np.argmax(valid_res[i]) for i in range(len(valid_res))]
          accuracy_valid = sum(pred_label == labels[test]) / len(labels[test])
          #print("epoch: {}, loss: {}, accuracy_train: {}, accuracy_valid: {}".format(epc, result[0], accuracy_train, accuracy_valid))
          print("epoch: {}, loss: {}, accuracy_valid: {}".format(epc, result[0], accuracy_valid))
          
       
-
-         valid_res = sess.run(output, feed_dict={in_ph: imgs[test],keep_prob_ph: 1.0})
          saver.save(sess, "./result/cv{}/model".format(cv), global_step=args.epoch)
 
       sess.close()
