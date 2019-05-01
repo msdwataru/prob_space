@@ -67,8 +67,10 @@ class CNN:
         h_conv2 = tf.nn.relu(h_conv2)
         
         #Conv3(14*14*16)
-        h_conv3 = conv2d(h_conv2, self.w_conv3, train=train) + conv2d(h_pool1, self.w_conv1to3, train=train)
+        #h_conv3 = conv2d(h_conv2, self.w_conv3, train=train) + conv2d(h_pool1, self.w_conv1to3, train=train)
+        h_conv3 = conv2d(h_conv2, self.w_conv3, train=train)
         h_conv3 = batch_norm_wrapper(h_conv3, phase_train=phase_train)
+        h_conv3 += conv2d(h_pool1, self.w_conv1to3, train=train)
         h_conv3 = tf.nn.relu(h_conv3)
 
         #Conv4(14*14*32)
@@ -77,8 +79,10 @@ class CNN:
         h_conv4= tf.nn.relu(h_conv4)
         
         #Conv5(14*14*32)
-        h_conv5 = conv2d(h_conv4, self.w_conv5, train=train) + conv2d(h_conv3, self.w_conv3to5, train=train)
+        #h_conv5 = conv2d(h_conv4, self.w_conv5, train=train) + conv2d(h_conv3, self.w_conv3to5, train=train)
+        h_conv5 = conv2d(h_conv4, self.w_conv5, train=train)
         h_conv5 = batch_norm_wrapper(h_conv5, phase_train=phase_train)
+        h_conv5 += conv2d(h_conv3, self.w_conv3to5, train=train)
         h_conv5 = tf.nn.relu(h_conv5)
 
         # max pooling(7*7*32)
@@ -182,7 +186,7 @@ if __name__ == "__main__":
    keep_prob_ph = tf.placeholder(tf.float32)
    phase_train_ph = tf.placeholder(tf.bool)
    
-   #channel_list = [1, 2, 2, 2, 2, 2]
+   #channel_list = [1, 2, 3, 3, 3, 3]
    #channel_list = [1, 8, 16, 16, 32, 32]
    channel_list = [1, 8, 16, 16, 16, 16]
    model = CNN(3, 3, ch_list=channel_list)
@@ -200,9 +204,9 @@ if __name__ == "__main__":
    
    total_batch = int(0.8 * len(imgs) / args.batch_size)
 
-   datagen = ImageDataGenerator(rotation_range=10,
-                                width_shift_range=3,
-                                height_shift_range=3,
+   datagen = ImageDataGenerator(rotation_range=5,
+                                width_shift_range=2,
+                                height_shift_range=2,
                                 )
    cv = 0
    for train, test in kfold.split(imgs, labels):
@@ -216,12 +220,12 @@ if __name__ == "__main__":
       #feed_dict = {in_ph: train_data,
       #             target_ph: train_label}
       for epc in range(1, args.epoch + 1):
-         #for d in datagen.flow(imgs, shuffle=False, batch_size=len(imgs)):
-         #   imgs_gen = d
-         #   break
+         for d in datagen.flow(imgs, shuffle=False, batch_size=len(imgs)):
+            imgs_gen = d
+            break
          random.shuffle(train)
          for i in range(total_batch):
-            mini_batch = imgs[train[i*args.batch_size:(i+1)*args.batch_size]]
+            mini_batch = imgs_gen[train[i*args.batch_size:(i+1)*args.batch_size]]
             #mini_batch = train_data[:100]
 
             mini_batch_y = labels_onehot[train[i*args.batch_size:(i+1)*args.batch_size]]

@@ -6,7 +6,7 @@ import random
 from sklearn.model_selection import cross_val_score
 from IPython import embed
 
-from cnn import CNN, conv2d, max_pool_2x2, batch_norm_wrapper
+from learn_resnet import CNN, conv2d, max_pool_2x2, batch_norm_wrapper
 
 if __name__ == "__main__":
 
