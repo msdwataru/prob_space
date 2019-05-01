@@ -121,14 +121,14 @@ if __name__ == "__main__":
       
    num_valid = int(0.2 * len(imgs))
    
-   train_data = imgs[:-num_valid]
+   train_data = imgs[num_valid:]
    train_data = np.expand_dims(train_data,axis=3)
    train_data = train_data / 255.
-   valid_data = imgs[-num_valid:]
+   valid_data = imgs[:num_valid]
    valid_data = np.expand_dims(valid_data,axis=3)
    valid_data = valid_data / 255.
-   train_label = labels_onehot[:-num_valid]
-   valid_label = labels_onehot[-num_valid:]
+   train_label = labels_onehot[num_valid:]
+   valid_label = labels_onehot[:num_valid]
 
    in_ph = tf.placeholder(tf.float32, shape=[None, 28, 28, 1])
    target_ph = tf.placeholder(tf.float32, shape=[None, 10])
@@ -156,6 +156,7 @@ if __name__ == "__main__":
    train_idx = list(range(len(train_data)))
    for epc in range(1, args.epoch + 1):
       random.shuffle(train_idx)
+      train_data = train_data.transpose(0, 2, 1, 3)[:, ::-1]
       for i in range(total_batch):
          mini_batch = train_data[train_idx[i*args.batch_size:(i+1)*args.batch_size]]
          #mini_batch = train_data[:100]
@@ -174,7 +175,7 @@ if __name__ == "__main__":
       
       valid_res = sess.run(output, feed_dict={in_ph: valid_data, keep_prob_ph: 1.0})
       pred_label = [np.argmax(valid_res[i]) for i in range(len(valid_res))]
-      accuracy_valid = sum(pred_label == labels[-num_valid:]) / len(valid_label)
+      accuracy_valid = sum(pred_label == labels[:num_valid]) / len(valid_label)
       #print("epoch: {}, loss: {}, accuracy_train: {}, accuracy_valid: {}".format(epc, result[0], accuracy_train, accuracy_valid))
       print("epoch: {}, loss: {}, accuracy_valid: {}".format(epc, result[0], accuracy_valid))
       
@@ -183,5 +184,5 @@ if __name__ == "__main__":
    valid_res = sess.run(output, feed_dict={in_ph: valid_data,keep_prob_ph: 1.0})
    saver.save(sess, "./result/model", global_step=args.epoch)
 
-
+   sess.close()
 
