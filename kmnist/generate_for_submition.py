@@ -21,7 +21,7 @@ if __name__ == "__main__":
    target_ph = tf.placeholder(tf.float32, shape=[None, 10])
    keep_prob_ph = tf.placeholder(tf.float32)
    
-   channel_list = [1, 32, 32, 64, 64]
+   channel_list = [1, 16, 16, 32, 32]
    model = CNN(3, 3, ch_list=channel_list)
    
    output = model(in_ph, keep_prob_ph)
