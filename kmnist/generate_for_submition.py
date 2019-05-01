@@ -13,22 +13,22 @@ if __name__ == "__main__":
    #label_file = "./kmnist-train-labels.npz"
    test_img_file = "./kmnist-test-imgs.npz"
 
-   imgs = np.load(img_file)["arr_0"]
-   labels = np.load(label_file)["arr_0"]
-   labels_onehot = np.zeros([len(labels), 10])
-   for i, l in enumerate(labels):
-      labels_onehot[i, l] = 1
+   imgs = np.load(test_img_file)["arr_0"]
+   #labels = np.load(label_file)["arr_0"]
+   #labels_onehot = np.zeros([len(labels), 10])
+   #for i, l in enumerate(labels):
+   #   labels_onehot[i, l] = 1
       
-   num_valid = int(0.2 * len(imgs))
+   #num_valid = int(0.2 * len(imgs))
    
-   train_data = imgs[:-num_valid]
-   train_data = np.expand_dims(train_data,axis=3)
-   train_data = train_data / 255.
-   valid_data = imgs[-num_valid:]
-   valid_data = np.expand_dims(valid_data,axis=3)
-   valid_data = valid_data / 255.
-   train_label = labels_onehot[:-num_valid]
-   valid_label = labels_onehot[-num_valid:]
+   #train_data = imgs[:-num_valid]
+   #train_data = np.expand_dims(train_data,axis=3)
+   train_data = imgs / 255.
+   #valid_data = imgs[-num_valid:]
+   #valid_data = np.expand_dims(valid_data,axis=3)
+   #valid_data = valid_data / 255.
+   #train_label = labels_onehot[:-num_valid]
+   #valid_label = labels_onehot[-num_valid:]
 
    in_ph = tf.placeholder(tf.float32, shape=[None, 28, 28, 1])
    target_ph = tf.placeholder(tf.float32, shape=[None, 10])

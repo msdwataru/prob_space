@@ -3,8 +3,17 @@ import pandas as pd
 import tensorflow as tf
 import cv2
 import random
+import argparse
 from sklearn.model_selection import cross_val_score
 from IPython import embed
+
+parser = argparse.ArgumentParser()
+
+parser.add_argument("-e", "--epoch", type=int, default=100)
+parser.add_argument("--batch_size", type=int, default=100)
+parser.add_argument("--lr", type=float, default=0.001)
+
+args = parser.parse_args()
 
 class CNN:
    def __init__(self, k_h, k_w, ch_list=[3,32,32,16,8], stddev=0.1):
@@ -125,20 +134,19 @@ if __name__ == "__main__":
    target_ph = tf.placeholder(tf.float32, shape=[None, 10])
    keep_prob_ph = tf.placeholder(tf.float32)
    
-   channel_list = [1, 16, 16, 32, 32]
+   channel_list = [1, 32, 32, 64, 64]
    model = CNN(3, 3, ch_list=channel_list)
    
    output = model(in_ph, keep_prob_ph)
    #loss = tf.reduce_sum(tf.square(output - target_ph))
    #loss = tf.reduce_sum(-target_ph*tf.log(output + 1e-7) - (1 - target_ph) * tf.log(1. - output + 1e-7))
    loss = tf.reduce_mean(-output * tf.log(target_ph + 1e-7))
-   train_op = tf.train.AdamOptimizer(learning_rate=0.002).minimize(loss)
+   train_op = tf.train.AdamOptimizer(learning_rate=args.lr).minimize(loss)
    
    saver = tf.train.Saver(tf.global_variables())
    
-   epoch = 100
-   batch_size = 100
-   total_batch = int(len(train_data) / batch_size)
+
+   total_batch = int(len(train_data) / args.batch_size)
 
    sess = tf.InteractiveSession()
    sess.run(tf.global_variables_initializer())
@@ -146,12 +154,12 @@ if __name__ == "__main__":
    #feed_dict = {in_ph: train_data,
    #             target_ph: train_label}
    train_idx = list(range(len(train_data)))
-   for epc in range(1, epoch + 1):
+   for epc in range(1, args.epoch + 1):
       random.shuffle(train_idx)
       for i in range(total_batch):
-         mini_batch = train_data[train_idx[i*batch_size:(i+1)*batch_size]]
+         mini_batch = train_data[train_idx[i*args.batch_size:(i+1)*args.batch_size]]
          #mini_batch = train_data[:100]
-         mini_batch_y = train_label[train_idx[i*batch_size:(i+1)*batch_size]]
+         mini_batch_y = train_label[train_idx[i*args.batch_size:(i+1)*args.batch_size]]
          #mini_batch_y = train_label[:100]
          feed_dict = {in_ph: mini_batch,
                       target_ph: mini_batch_y,
@@ -173,7 +181,7 @@ if __name__ == "__main__":
       
       
    valid_res = sess.run(output, feed_dict={in_ph: valid_data,keep_prob_ph: 1.0})
-   saver.save(sess, "./result/model", global_step=epoch)
+   saver.save(sess, "./result/model", global_step=args.epoch)
 
 
 
