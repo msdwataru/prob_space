@@ -15,6 +15,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-e", "--epoch", type=int, default=1)
 parser.add_argument("--batch_size", type=int, default=100)
 parser.add_argument("--lr", type=float, default=0.001)
+parser.add_argument("--cv", type=int, default=5)
 
 args = parser.parse_args()
 
@@ -179,7 +180,7 @@ if __name__ == "__main__":
       labels_onehot[i, l] = 1
       
    
-   kfold = StratifiedKFold(n_splits=5, shuffle=True)
+   kfold = StratifiedKFold(n_splits=args.cv, shuffle=True)
 
    in_ph = tf.placeholder(tf.float32, shape=[None, 28, 28, 1])
    target_ph = tf.placeholder(tf.float32, shape=[None, 10])
