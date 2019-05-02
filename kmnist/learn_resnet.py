@@ -250,7 +250,7 @@ if __name__ == "__main__":
                                 preprocessing_function=get_random_eraser(v_l=0, v_h=1)
                                 
                                 )
-   cv = 0
+   cv = 4
    for train, test in kfold.split(imgs, labels):
 
       cv += 1
@@ -264,19 +264,19 @@ if __name__ == "__main__":
       #feed_dict = {in_ph: train_data,
       #             target_ph: train_label}
       for epc in range(1, args.epoch + 1):
-         for d in datagen.flow(imgs, shuffle=False, batch_size=len(imgs)):
-            imgs_gen = d
-            break
+         #for d in datagen.flow(imgs, shuffle=False, batch_size=len(imgs)):
+         #   imgs_gen = d
+         #   break
          random.shuffle(train)
          for i in range(total_batch):
-            mini_batch = imgs_gen[train[i*args.batch_size:(i+1)*args.batch_size]]
+            mini_batch = imgs[train[i*args.batch_size:(i+1)*args.batch_size]]
             #mini_batch = train_data[:100]
 
             mini_batch_y = labels_onehot[train[i*args.batch_size:(i+1)*args.batch_size]]
             #mini_batch_y = train_label[:100]
             feed_dict = {in_ph: mini_batch,
                          target_ph: mini_batch_y,
-                         keep_prob_ph: 0.7,
+                         keep_prob_ph: 0.8,
                          phase_train_ph: True}
          
             result = sess.run([loss, train_op], feed_dict=feed_dict)

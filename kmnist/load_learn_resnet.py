@@ -244,13 +244,13 @@ if __name__ == "__main__":
    
    total_batch = int(len(imgs) * (1. - 1. / args.cv) / args.batch_size)
 
-   datagen = ImageDataGenerator(rotation_range=0,
-                                width_shift_range=0,
-                                height_shift_range=0,
-                                preprocessing_function=get_random_eraser(v_l=0, v_h=1)
+   datagen = ImageDataGenerator(rotation_range=5,
+                                width_shift_range=2,
+                                height_shift_range=2,
+                                #preprocessing_function=get_random_eraser(v_l=0, v_h=0.3)
                                 
                                 )
-   cv = 0
+   cv = 4
    for train, test in kfold.split(imgs, labels):
 
       cv += 1
@@ -281,7 +281,7 @@ if __name__ == "__main__":
             #mini_batch_y = train_label[:100]
             feed_dict = {in_ph: mini_batch,
                          target_ph: mini_batch_y,
-                         keep_prob_ph: 0.7,
+                         keep_prob_ph: 0.8,
                          phase_train_ph: True}
          
             result = sess.run([loss, train_op], feed_dict=feed_dict)
@@ -297,7 +297,7 @@ if __name__ == "__main__":
          #print("epoch: {}, loss: {}, accuracy_train: {}, accuracy_valid: {}".format(epc, result[0], accuracy_train, accuracy_valid))
          print("epoch: {}, time: {}, loss: {:6f}, accuracy_valid: {:6f}".format(epc, int(time.time() - start_time), result[0], accuracy_valid))
 
-         if accuracy_valid >= 0.992:
+         if accuracy_valid >= 0.994:
             if not os.path.exists("./result"):
                os.mkdir("./result")
             saver.save(sess, "./result/cv{}/model".format(cv), global_step=epc)
@@ -311,5 +311,5 @@ if __name__ == "__main__":
       sess.close()
       del sess
       gc.collect()
-      if cv == 5:
+      if cv:
          break
