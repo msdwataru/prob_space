@@ -2,7 +2,9 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 import cv2
+import os
 import random
+import time
 import copy
 import argparse
 import gc
@@ -16,6 +18,7 @@ parser.add_argument("-e", "--epoch", type=int, default=1)
 parser.add_argument("--batch_size", type=int, default=100)
 parser.add_argument("--lr", type=float, default=0.001)
 parser.add_argument("--cv", type=int, default=5)
+parser.add_argument("--log_interval", type=int, default = 50)
 
 args = parser.parse_args()
 
@@ -270,10 +273,13 @@ if __name__ == "__main__":
          pred_label = [np.argmax(valid_res[i]) for i in range(len(valid_res))]
          accuracy_valid = sum(pred_label == labels[test]) / len(labels[test])
          #print("epoch: {}, loss: {}, accuracy_train: {}, accuracy_valid: {}".format(epc, result[0], accuracy_train, accuracy_valid))
-         print("epoch: {}, time: {}, loss: {:6f}, accuracy_valid: {:6f}".format(epc, time.time() - start_time, result[0], accuracy_valid))
-         
-      
-         saver.save(sess, "./result/cv{}/model".format(cv), global_step=args.epoch)
+         print("epoch: {}, time: {}, loss: {:6f}, accuracy_valid: {:6f}".format(epc, int(time.time() - start_time), result[0], accuracy_valid))
+
+
+         if epc % args.log_interval == 0:
+            if not os.path.exists("./result"):
+               os.mkdir("./result")
+            saver.save(sess, "./result/cv{}/model".format(cv), global_step=epc)
 
       sess.close()
       del sess
