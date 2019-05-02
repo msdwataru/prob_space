@@ -30,19 +30,19 @@ class CNN:
             #conv
             self.w_conv1 = tf.Variable(tf.truncated_normal([k_h, k_w, self.ch_list[0], self.ch_list[1]], stddev=stddev))
 
-            self.w_conv1to3 = tf.Variable(tf.truncated_normal([1, 1, self.ch_list[1], self.ch_list[3]], stddev=stddev))
+            self.w_conv1to3 = tf.Variable(tf.truncated_normal([1, 1, self.ch_list[1], self.ch_list[3]], stddev=stddev), name="skip1to3")
             
             self.w_conv2 = tf.Variable(tf.truncated_normal([k_h, k_w, self.ch_list[1], self.ch_list[2]], stddev=stddev))
             
             self.w_conv3 = tf.Variable(tf.truncated_normal([k_h, k_w, self.ch_list[2], self.ch_list[3]], stddev=stddev))
             
-            self.w_conv3to5 = tf.Variable(tf.truncated_normal([1, 1, self.ch_list[3], self.ch_list[5]], stddev=stddev))
+            self.w_conv3to5 = tf.Variable(tf.truncated_normal([1, 1, self.ch_list[3], self.ch_list[5]], stddev=stddev), name="skip3to5")
 
             self.w_conv4 = tf.Variable(tf.truncated_normal([k_h, k_w, self.ch_list[3], self.ch_list[4]], stddev=stddev))
 
             self.w_conv5 = tf.Variable(tf.truncated_normal([k_h, k_w, self.ch_list[4], self.ch_list[5]], stddev=stddev))
            
-            self.w_conv5to7 = tf.Variable(tf.truncated_normal([1, 1, self.ch_list[5], self.ch_list[7]], stddev=stddev))
+            self.w_conv5to7 = tf.Variable(tf.truncated_normal([1, 1, self.ch_list[5], self.ch_list[7]], stddev=stddev), name="skip5to7")
 
             self.w_conv6 = tf.Variable(tf.truncated_normal([k_h, k_w, self.ch_list[5], self.ch_list[6]], stddev=stddev))
 
@@ -216,28 +216,36 @@ if __name__ == "__main__":
    keep_prob_ph = tf.placeholder(tf.float32)
    phase_train_ph = tf.placeholder(tf.bool)
    
-   #channel_list = [1, 2, 3, 3, 3, 3, 3, 3]
+   #channel_list = [1, 1, 1, 1, 1, 1, 1, 1]
    #channel_list = [1, 8, 16, 16, 16, 16]
    channel_list = [1, 16, 32, 32, 64, 64, 128, 128]
-   channel_list = [1, 8, 16, 16, 32, 32, 64, 64]
+   #channel_list = [1, 8, 16, 16, 32, 32, 64, 64]
    model = CNN(3, 3, ch_list=channel_list)
    
    output = model(in_ph, keep_prob_ph, phase_train=phase_train_ph)
 
+   vars_regularized = []
+   skipped_connection = []
+   for v in tf.global_variables():
+      if "skip" in v.name:
+         skipped_connection.append(v)
+      else:
+         vars_regularized.append(v)
+         
    l1_regularizer = tf.contrib.layers.l1_regularizer(0.001)
-   reg_penalty = tf.contrib.layers.apply_regularization(l1_regularizer, tf.global_variables())
+   reg_penalty = tf.contrib.layers.apply_regularization(l1_regularizer, vars_regularized)
    #loss = tf.reduce_sum(tf.square(output - target_ph))
    #loss = tf.reduce_sum(-target_ph*tf.log(output + 1e-7) - (1 - target_ph) * tf.log(1. - output + 1e-7))
    loss = tf.reduce_mean(-output * tf.log(target_ph + 1e-7)) 
-   train_op = tf.train.AdamOptimizer(learning_rate=args.lr).minimize(loss) #+ reg_penalty)
+   train_op = tf.train.AdamOptimizer(learning_rate=args.lr).minimize(loss) # + reg_penalty)
    
    saver = tf.train.Saver(tf.global_variables(), max_to_keep=None)
    
    total_batch = int(len(imgs) * (1. - 1. / args.cv) / args.batch_size)
 
-   datagen = ImageDataGenerator(rotation_range=10,
-                                width_shift_range=3,
-                                height_shift_range=3,
+   datagen = ImageDataGenerator(rotation_range=5,
+                                width_shift_range=2,
+                                height_shift_range=2,
                                 )
    cv = 0
    for train, test in kfold.split(imgs, labels):
@@ -253,19 +261,19 @@ if __name__ == "__main__":
       #feed_dict = {in_ph: train_data,
       #             target_ph: train_label}
       for epc in range(1, args.epoch + 1):
-         #for d in datagen.flow(imgs, shuffle=False, batch_size=len(imgs)):
-         #   imgs_gen = d
-         #   break
+         for d in datagen.flow(imgs, shuffle=False, batch_size=len(imgs)):
+            imgs_gen = d
+            break
          random.shuffle(train)
          for i in range(total_batch):
-            mini_batch = imgs[train[i*args.batch_size:(i+1)*args.batch_size]]
+            mini_batch = imgs_gen[train[i*args.batch_size:(i+1)*args.batch_size]]
             #mini_batch = train_data[:100]
 
             mini_batch_y = labels_onehot[train[i*args.batch_size:(i+1)*args.batch_size]]
             #mini_batch_y = train_label[:100]
             feed_dict = {in_ph: mini_batch,
                          target_ph: mini_batch_y,
-                         keep_prob_ph: 0.6,
+                         keep_prob_ph: 0.7,
                          phase_train_ph: True}
          
             result = sess.run([loss, train_op], feed_dict=feed_dict)
