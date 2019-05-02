@@ -14,7 +14,7 @@ from IPython import embed
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument("-e", "--epoch", type=int, default=1)
+parser.add_argument("-e", "--epoch", type=int, default=10)
 parser.add_argument("--batch_size", type=int, default=100)
 parser.add_argument("--lr", type=float, default=0.001)
 parser.add_argument("--cv", type=int, default=10)
@@ -225,7 +225,7 @@ if __name__ == "__main__":
    loss = tf.reduce_mean(-output * tf.log(target_ph + 1e-7)) 
    train_op = tf.train.AdamOptimizer(learning_rate=args.lr).minimize(loss) #+ reg_penalty)
    
-   saver = tf.train.Saver(tf.global_variables())
+   saver = tf.train.Saver(tf.global_variables(), max_to_keep=None)
    
    total_batch = int(len(imgs) * (1. - 1. / args.cv) / args.batch_size)
 
