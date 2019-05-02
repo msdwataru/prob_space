@@ -12,6 +12,8 @@ from keras.preprocessing.image import ImageDataGenerator
 from sklearn.model_selection import StratifiedKFold
 from IPython import embed
 
+from random_eraser import get_random_eraser
+
 parser = argparse.ArgumentParser()
 
 parser.add_argument("-e", "--epoch", type=int, default=10)
@@ -194,7 +196,6 @@ def batch_norm_wrapper(inputs, phase_train=None, decay=0.99):
         
 
 
-
 if __name__ == "__main__":
    img_file = "./kmnist-train-imgs.npz"
    label_file = "./kmnist-train-labels.npz"
@@ -243,9 +244,11 @@ if __name__ == "__main__":
    
    total_batch = int(len(imgs) * (1. - 1. / args.cv) / args.batch_size)
 
-   datagen = ImageDataGenerator(rotation_range=5,
-                                width_shift_range=2,
-                                height_shift_range=2,
+   datagen = ImageDataGenerator(rotation_range=0,
+                                width_shift_range=0,
+                                height_shift_range=0,
+                                preprocessing_function=get_random_eraser(v_l=0, v_h=1)
+                                
                                 )
    cv = 0
    for train, test in kfold.split(imgs, labels):
