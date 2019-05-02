@@ -17,7 +17,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-e", "--epoch", type=int, default=1)
 parser.add_argument("--batch_size", type=int, default=100)
 parser.add_argument("--lr", type=float, default=0.001)
-parser.add_argument("--cv", type=int, default=5)
+parser.add_argument("--cv", type=int, default=10)
 parser.add_argument("--log_interval", type=int, default = 50)
 
 args = parser.parse_args()
@@ -247,12 +247,12 @@ if __name__ == "__main__":
       #feed_dict = {in_ph: train_data,
       #             target_ph: train_label}
       for epc in range(1, args.epoch + 1):
-         #for d in datagen.flow(imgs, shuffle=False, batch_size=len(imgs)):
-         #   imgs_gen = d
-         #   break
+         for d in datagen.flow(imgs, shuffle=False, batch_size=len(imgs)):
+            imgs_gen = d
+            break
          random.shuffle(train)
          for i in range(total_batch):
-            mini_batch = imgs[train[i*args.batch_size:(i+1)*args.batch_size]]
+            mini_batch = imgs_gen[train[i*args.batch_size:(i+1)*args.batch_size]]
             #mini_batch = train_data[:100]
 
             mini_batch_y = labels_onehot[train[i*args.batch_size:(i+1)*args.batch_size]]
@@ -275,7 +275,12 @@ if __name__ == "__main__":
          #print("epoch: {}, loss: {}, accuracy_train: {}, accuracy_valid: {}".format(epc, result[0], accuracy_train, accuracy_valid))
          print("epoch: {}, time: {}, loss: {:6f}, accuracy_valid: {:6f}".format(epc, int(time.time() - start_time), result[0], accuracy_valid))
 
-
+         if accuracy_valid >= 0.994:
+            if not os.path.exists("./result"):
+               os.mkdir("./result")
+            saver.save(sess, "./result/cv{}/model".format(cv), global_step=epc)
+            break
+         
          if epc % args.log_interval == 0:
             if not os.path.exists("./result"):
                os.mkdir("./result")
@@ -284,3 +289,5 @@ if __name__ == "__main__":
       sess.close()
       del sess
       gc.collect()
+      if cv == 5:
+         break

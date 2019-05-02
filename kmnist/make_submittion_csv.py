@@ -11,4 +11,4 @@ df["ImageId"] = range(1,10001)
 df["Label"] = ans
 
 print(df.head())
-df.to_csv("submittion4.csv", index=False)
+df.to_csv("submittion.csv", index=False)
