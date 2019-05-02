@@ -35,8 +35,6 @@ class CNN:
             self.w_conv2 = tf.Variable(tf.truncated_normal([k_h, k_w, self.ch_list[1], self.ch_list[2]], stddev=stddev))
             
             self.w_conv3 = tf.Variable(tf.truncated_normal([k_h, k_w, self.ch_list[2], self.ch_list[3]], stddev=stddev))
-            
-            self.w_conv3to5 = tf.Variable(tf.truncated_normal([1, 1, self.ch_list[3], self.ch_list[5]], stddev=stddev))
 
             self.w_conv4 = tf.Variable(tf.truncated_normal([k_h, k_w, self.ch_list[3], self.ch_list[4]], stddev=stddev))
 
@@ -48,7 +46,21 @@ class CNN:
 
             self.w_conv7 = tf.Variable(tf.truncated_normal([k_h, k_w, self.ch_list[6], self.ch_list[7]], stddev=stddev))
 
-            self.w_fc1 = tf.Variable(tf.truncated_normal([7 * 7 * self.ch_list[7], 10], stddev=stddev))
+            self.w_conv8 = tf.Variable(tf.truncated_normal([k_h, k_w, self.ch_list[7], self.ch_list[8]], stddev=stddev))
+
+            self.w_conv9 = tf.Variable(tf.truncated_normal([k_h, k_w, self.ch_list[8], self.ch_list[9]], stddev=stddev))
+
+            self.w_conv9to11 = tf.Variable(tf.truncated_normal([1, 1, self.ch_list[9], self.ch_list[11]], stddev=stddev))
+
+            self.w_conv10 = tf.Variable(tf.truncated_normal([k_h, k_w, self.ch_list[9], self.ch_list[10]], stddev=stddev))
+
+            self.w_conv11 = tf.Variable(tf.truncated_normal([k_h, k_w, self.ch_list[10], self.ch_list[11]], stddev=stddev))
+
+            self.w_conv12 = tf.Variable(tf.truncated_normal([k_h, k_w, self.ch_list[11], self.ch_list[12]], stddev=stddev))
+
+            self.w_conv13 = tf.Variable(tf.truncated_normal([k_h, k_w, self.ch_list[12], self.ch_list[13]], stddev=stddev))
+
+            self.w_fc1 = tf.Variable(tf.truncated_normal([7 * 7 * self.ch_list[13], 10], stddev=stddev))
             self.b_fc1 = tf.Variable(tf.zeros([10]))
             
             """
@@ -86,43 +98,88 @@ class CNN:
         h_conv3 += conv2d(h_pool1, self.w_conv1to3, train=train)
         h_conv3 = tf.nn.relu(h_conv3)
 
-        #Conv4(14*14*64)
+        #Conv4(14*14*32)
         h_conv4 = conv2d(h_conv3, self.w_conv4, train=train)
         h_conv4 = batch_norm_wrapper(h_conv4, phase_train=phase_train)
-        h_conv4= tf.nn.relu(h_conv4)
-        #h_conv4 = conv2d(h_conv4, self.w_conv4, train=train)        
-
-        #Conv5(14*14*64)
-        #h_conv5 = conv2d(h_conv4, self.w_conv5, train=train) + conv2d(h_conv3, self.w_conv3to5, train=train)
+        h_conv4 = tf.nn.relu(h_conv4)
+        #h_conv2 = conv2d(h_conv2, self.w_conv2, train=train)
+        
+        #Conv5(14*14*32)
+        #h_conv3 = conv2d(h_conv2, self.w_conv3, train=train) + conv2d(h_pool1, self.w_conv1to3, train=train)
         h_conv5 = conv2d(h_conv4, self.w_conv5, train=train)
-        h_conv5 = batch_norm_wrapper(h_conv5, phase_train=phase_train)        
-        #h_conv5 = conv2d(h_conv5, self.w_conv5, train=train)
-        h_conv5 += conv2d(h_conv3, self.w_conv3to5, train=train)
+        h_conv5 = batch_norm_wrapper(h_conv5, phase_train=phase_train)
+        #h_conv3 = conv2d(h_conv3, self.w_conv3, train=train)
+        h_conv5 += h_conv3
         h_conv5 = tf.nn.relu(h_conv5)
-        #h_conv5 += h_conv3
 
-        #Conv6(14*14*128)
+        #Conv6(14*14*64)
         h_conv6 = conv2d(h_conv5, self.w_conv6, train=train)
         h_conv6 = batch_norm_wrapper(h_conv6, phase_train=phase_train)
-        h_conv6= tf.nn.relu(h_conv6)
+        h_conv6 = tf.nn.relu(h_conv6)
+        #h_conv4 = conv2d(h_conv4, self.w_conv4, train=train)        
+
+        #Conv7(14*14*64)
+        #h_conv5 = conv2d(h_conv4, self.w_conv5, train=train) + conv2d(h_conv3, self.w_conv3to5, train=train)
+        h_conv7 = conv2d(h_conv6, self.w_conv7, train=train)
+        h_conv7 = batch_norm_wrapper(h_conv7, phase_train=phase_train)        
+        #h_conv5 = conv2d(h_conv5, self.w_conv5, train=train)
+        h_conv7 += conv2d(h_conv5, self.w_conv5to7, train=train)
+        h_conv7 = tf.nn.relu(h_conv7)
+        #h_conv5 += h_conv3
+
+        #Conv8(14*14*64)
+        h_conv8 = conv2d(h_conv7, self.w_conv8, train=train)
+        h_conv8 = batch_norm_wrapper(h_conv8, phase_train=phase_train)
+        h_conv8= tf.nn.relu(h_conv8)
         #h_conv6 = conv2d(h_conv6, self.w_conv6, train=train)
 
-        #Conv7(14*14*128)
+        #Conv9(14*14*64)
         #h_conv7 = conv2d(h_conv6, self.w_conv7, train=train) + conv2d(h_conv5, self.w_conv5to7, train=train)
-        h_conv7 = conv2d(h_conv6, self.w_conv7, train=train)
-        h_conv7 = batch_norm_wrapper(h_conv7, phase_train=phase_train)
+        h_conv9 = conv2d(h_conv8, self.w_conv9, train=train)
+        h_conv9 = batch_norm_wrapper(h_conv9, phase_train=phase_train)
         #h_conv7 = conv2d(h_conv7, self.w_conv7, train=train)
-        h_conv7 += conv2d(h_conv5, self.w_conv5to7, train=train)
-        h_conv7 = tf.nn.relu(h_conv7)        
+        h_conv9 += h_conv7
+        h_conv9 = tf.nn.relu(h_conv9)        
 
+        #Conv10(14*14*128)
+        h_conv10 = conv2d(h_conv9, self.w_conv10, train=train)
+        h_conv10 = batch_norm_wrapper(h_conv10, phase_train=phase_train)
+        h_conv10 = tf.nn.relu(h_conv10)
+        #h_conv4 = conv2d(h_conv4, self.w_conv4, train=train)        
+
+        #Conv11(14*14*128)
+        #h_conv5 = conv2d(h_conv4, self.w_conv5, train=train) + conv2d(h_conv3, self.w_conv3to5, train=train)
+        h_conv11 = conv2d(h_conv10, self.w_conv11, train=train)
+        h_conv11 = batch_norm_wrapper(h_conv11, phase_train=phase_train) 
+        #h_conv5 = conv2d(h_conv5, self.w_conv5, train=train)
+        h_conv11 += conv2d(h_conv9, self.w_conv9to11, train=train)
+        h_conv11 = tf.nn.relu(h_conv11)
+        #h_conv5 += h_conv3
+
+        #Conv12(14*14*128)
+        h_conv12 = conv2d(h_conv11, self.w_conv12, train=train)
+        h_conv12 = batch_norm_wrapper(h_conv12, phase_train=phase_train)
+        h_conv12= tf.nn.relu(h_conv12)
+        #h_conv6 = conv2d(h_conv6, self.w_conv6, train=train)
+
+        #Conv13(14*14*128)
+        #h_conv7 = conv2d(h_conv6, self.w_conv7, train=train) + conv2d(h_conv5, self.w_conv5to7, train=train)
+        h_conv13 = conv2d(h_conv12, self.w_conv13, train=train)
+        h_conv13 = batch_norm_wrapper(h_conv13, phase_train=phase_train)
+        #h_conv7 = conv2d(h_conv7, self.w_conv7, train=train)
+        h_conv13 += h_conv11
+        h_conv13 = tf.nn.relu(h_conv13)        
+        
+
+        
         # max pooling(7*7*128)
         #h_pool5 = max_pool_2x2(h_conv5)
         # global average pooling(7*7*32)
-        h_pool5 = tf.nn.avg_pool(h_conv7, ksize=[1,2,2,1], strides=[1,2,2,1],padding="VALID") 
+        h_pool13 = tf.nn.avg_pool(h_conv13, ksize=[1,2,2,1], strides=[1,2,2,1],padding="VALID") 
 
         #Full connection1(10)
-        h_pool5 = tf.reshape(h_pool5, [-1, 7 * 7 * self.ch_list[7]])
-        h_fc1 = tf.matmul(h_pool5, self.w_fc1) + self.b_fc1
+        h_pool13 = tf.reshape(h_pool13, [-1, 7 * 7 * self.ch_list[13]])
+        h_fc1 = tf.matmul(h_pool13, self.w_fc1) + self.b_fc1
         h_drop = tf.nn.dropout(h_fc1, keep_prob)
         #h_fc1 = tf.nn.tanh(h_fc1)
         #h_fc1 = tf.nn.sigmoid(h_fc1)
@@ -218,8 +275,10 @@ if __name__ == "__main__":
    
    #channel_list = [1, 2, 3, 3, 3, 3, 3, 3]
    #channel_list = [1, 8, 16, 16, 16, 16]
-   channel_list = [1, 16, 32, 32, 64, 64, 128, 128]
-   channel_list = [1, 8, 16, 16, 32, 32, 64, 64]
+   #channel_list = [1, 16, 32, 32, 64, 64, 128, 128]
+   channel_list = [1, 16, 32, 32, 32, 32, 64, 64, 64, 64, 128, 128, 128, 128]
+   #channel_list = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+   #channel_list = [1, 8, 16, 16, 32, 32, 64, 64]
    model = CNN(3, 3, ch_list=channel_list)
    
    output = model(in_ph, keep_prob_ph, phase_train=phase_train_ph)
