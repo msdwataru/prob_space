@@ -3,6 +3,7 @@ import pandas as pd
 import tensorflow as tf
 import cv2
 import random
+from collections import Counter
 from sklearn.model_selection import cross_val_score
 from IPython import embed
 
@@ -31,7 +32,7 @@ if __name__ == "__main__":
    
    saver = tf.train.Saver(tf.global_variables())
 
-   cv = 5
+   cv = 0
    all_pred = []
    all_pred_label = []
    for i in range(5):
@@ -57,6 +58,9 @@ if __name__ == "__main__":
    mean_pred = np.empty([len(pred), 10])
    for i in range(len(pred)):
       mean_pred[i, :] = np.mean(all_pred[i], axis=0)
-   ans = [np.argmax(mean_pred[i]) for i in range(len(pred))]
-   np.savetxt("ans.txt", ans)
+   ans_mean = [np.argmax(mean_pred[i]) for i in range(len(pred))]
+   ans_count = [int(Counter(a).most_common()[0][0]) for a in all_pred_label]
+
+   np.savetxt("ans_mean.txt", ans_mean)
+   np.savetxt("ans_count.txt", ans_count)
 

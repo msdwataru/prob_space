@@ -64,53 +64,58 @@ class CNN:
             """
             
    def __call__(self, x, keep_prob, phase_train=None, train=True):
-        #Conv1(28*28*8)
+        #Conv1(28*28*16)
         h_conv1 = conv2d(x, self.w_conv1, train=train)
         h_conv1 = batch_norm_wrapper(h_conv1, phase_train=phase_train)
         h_conv1 = tf.nn.relu(h_conv1)
         
-        # max pooling(14*14*8)
+        # max pooling(14*14*16)
         h_pool1 = max_pool_2x2(h_conv1)
         
-        #Conv2(14*14*16)
+        #Conv2(14*14*32)
         h_conv2 = conv2d(h_pool1, self.w_conv2, train=train)
         h_conv2 = batch_norm_wrapper(h_conv2, phase_train=phase_train)
         h_conv2 = tf.nn.relu(h_conv2)
+        #h_conv2 = conv2d(h_conv2, self.w_conv2, train=train)
         
-        #Conv3(14*14*16)
+        #Conv3(14*14*32)
         #h_conv3 = conv2d(h_conv2, self.w_conv3, train=train) + conv2d(h_pool1, self.w_conv1to3, train=train)
         h_conv3 = conv2d(h_conv2, self.w_conv3, train=train)
         h_conv3 = batch_norm_wrapper(h_conv3, phase_train=phase_train)
+        #h_conv3 = conv2d(h_conv3, self.w_conv3, train=train)
         h_conv3 += conv2d(h_pool1, self.w_conv1to3, train=train)
         h_conv3 = tf.nn.relu(h_conv3)
 
-        #Conv4(14*14*32)
+        #Conv4(14*14*64)
         h_conv4 = conv2d(h_conv3, self.w_conv4, train=train)
         h_conv4 = batch_norm_wrapper(h_conv4, phase_train=phase_train)
         h_conv4= tf.nn.relu(h_conv4)
-        
-        #Conv5(14*14*32)
+        #h_conv4 = conv2d(h_conv4, self.w_conv4, train=train)        
+
+        #Conv5(14*14*64)
         #h_conv5 = conv2d(h_conv4, self.w_conv5, train=train) + conv2d(h_conv3, self.w_conv3to5, train=train)
         h_conv5 = conv2d(h_conv4, self.w_conv5, train=train)
-        h_conv5 = batch_norm_wrapper(h_conv5, phase_train=phase_train)
+        h_conv5 = batch_norm_wrapper(h_conv5, phase_train=phase_train)        
+        #h_conv5 = conv2d(h_conv5, self.w_conv5, train=train)
         h_conv5 += conv2d(h_conv3, self.w_conv3to5, train=train)
-        #h_conv5 += h_conv3
         h_conv5 = tf.nn.relu(h_conv5)
+        #h_conv5 += h_conv3
 
-
-        #Conv6(14*14*32)
+        #Conv6(14*14*128)
         h_conv6 = conv2d(h_conv5, self.w_conv6, train=train)
         h_conv6 = batch_norm_wrapper(h_conv6, phase_train=phase_train)
         h_conv6= tf.nn.relu(h_conv6)
-        
-        #Conv7(14*14*32)
+        #h_conv6 = conv2d(h_conv6, self.w_conv6, train=train)
+
+        #Conv7(14*14*128)
         #h_conv7 = conv2d(h_conv6, self.w_conv7, train=train) + conv2d(h_conv5, self.w_conv5to7, train=train)
         h_conv7 = conv2d(h_conv6, self.w_conv7, train=train)
         h_conv7 = batch_norm_wrapper(h_conv7, phase_train=phase_train)
+        #h_conv7 = conv2d(h_conv7, self.w_conv7, train=train)
         h_conv7 += conv2d(h_conv5, self.w_conv5to7, train=train)
-        h_conv7 = tf.nn.relu(h_conv7)
+        h_conv7 = tf.nn.relu(h_conv7)        
 
-        # max pooling(7*7*32)
+        # max pooling(7*7*128)
         #h_pool5 = max_pool_2x2(h_conv5)
         # global average pooling(7*7*32)
         h_pool5 = tf.nn.avg_pool(h_conv7, ksize=[1,2,2,1], strides=[1,2,2,1],padding="VALID") 
@@ -211,9 +216,10 @@ if __name__ == "__main__":
    keep_prob_ph = tf.placeholder(tf.float32)
    phase_train_ph = tf.placeholder(tf.bool)
    
-   #channel_list = [1, 2, 3, 3, 3, 3]
+   #channel_list = [1, 2, 3, 3, 3, 3, 3, 3]
    #channel_list = [1, 8, 16, 16, 16, 16]
    channel_list = [1, 16, 32, 32, 64, 64, 128, 128]
+   channel_list = [1, 8, 16, 16, 32, 32, 64, 64]
    model = CNN(3, 3, ch_list=channel_list)
    
    output = model(in_ph, keep_prob_ph, phase_train=phase_train_ph)
@@ -229,9 +235,9 @@ if __name__ == "__main__":
    
    total_batch = int(len(imgs) * (1. - 1. / args.cv) / args.batch_size)
 
-   datagen = ImageDataGenerator(rotation_range=5,
-                                width_shift_range=2,
-                                height_shift_range=2,
+   datagen = ImageDataGenerator(rotation_range=10,
+                                width_shift_range=3,
+                                height_shift_range=3,
                                 )
    cv = 0
    for train, test in kfold.split(imgs, labels):
@@ -247,19 +253,19 @@ if __name__ == "__main__":
       #feed_dict = {in_ph: train_data,
       #             target_ph: train_label}
       for epc in range(1, args.epoch + 1):
-         for d in datagen.flow(imgs, shuffle=False, batch_size=len(imgs)):
-            imgs_gen = d
-            break
+         #for d in datagen.flow(imgs, shuffle=False, batch_size=len(imgs)):
+         #   imgs_gen = d
+         #   break
          random.shuffle(train)
          for i in range(total_batch):
-            mini_batch = imgs_gen[train[i*args.batch_size:(i+1)*args.batch_size]]
+            mini_batch = imgs[train[i*args.batch_size:(i+1)*args.batch_size]]
             #mini_batch = train_data[:100]
 
             mini_batch_y = labels_onehot[train[i*args.batch_size:(i+1)*args.batch_size]]
             #mini_batch_y = train_label[:100]
             feed_dict = {in_ph: mini_batch,
                          target_ph: mini_batch_y,
-                         keep_prob_ph: 0.7,
+                         keep_prob_ph: 0.6,
                          phase_train_ph: True}
          
             result = sess.run([loss, train_op], feed_dict=feed_dict)
@@ -275,7 +281,7 @@ if __name__ == "__main__":
          #print("epoch: {}, loss: {}, accuracy_train: {}, accuracy_valid: {}".format(epc, result[0], accuracy_train, accuracy_valid))
          print("epoch: {}, time: {}, loss: {:6f}, accuracy_valid: {:6f}".format(epc, int(time.time() - start_time), result[0], accuracy_valid))
 
-         if accuracy_valid >= 0.994:
+         if accuracy_valid >= 0.992:
             if not os.path.exists("./result"):
                os.mkdir("./result")
             saver.save(sess, "./result/cv{}/model".format(cv), global_step=epc)
